@@ -1,0 +1,26 @@
+{
+    "name": "auth",
+    "version": "3.3",
+    "options": [
+        "--log-driver syslog",
+        "--log-opt syslog-address=udp://{{{env.syslog.address}}}",
+        "--log-opt tag={{{name}}}-v3-3_{{{target}}}"
+    ],
+    "constraints": [
+        "node.labels.hubgroup.layer==app"
+    ],
+    "dependencies": [
+        "notification-v2-2:4010"
+    ],
+    "environment": [
+        "HG_TARGET={{target}}",
+        "affinity:container!=~{{{name}}}*",
+        "HTTP_PROXY={{{env.http.proxy}}}",
+        "LOG_NAME={{{name}}}-{{{target}}}-v3-3"
+    ],
+    "networks": [
+        "apps",
+        "db",
+        "hgext"
+    ]
+}
