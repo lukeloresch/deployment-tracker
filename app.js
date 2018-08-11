@@ -1,45 +1,86 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
+#!/usr/bin/env node
+const fs = require('fs')
+const MongoClient = require('mongodb').MongoClient;
+const assert = require('assert');
+// Connection URL
+const url = 'mongodb://localhost:27017';
+// Database Name
+const dbName = 'deployments';
+var argv = require('yargs')
+  .usage('Usage: $0 -e [str] -n [str]')
+  .help('help').alias('help', 'h')
+  .options({
+    environment: {
+      alias: 'e',
+      description: "<envrionment> environment name",
+      requiresArg: true,
+      required: true
+    },
+    name: {
+      alias: 'n',
+      description: "<service name> name of service",
+      requiresArg: true,
+      required: true
+    },
+    branch: {
+      alias: 'b',
+      description: "<branch name> name of branch",
+      requiresArg: true,
+      required: true
+    },
+    commit: {
+      alias: 'c',
+      description: "<commit id> commit id",
+      requiresArg: true,
+      required: true
+    },
+    serviceJson: {
+      alias: 'j',
+      description: "<serivce.jsonfile>",
+      requiresArg: true,
+      required: true
+    }
+  })
+  .argv;
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
-
-
-
-
-
-var app = express();
-
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
-
-app.use(logger('dev'));
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.use('/', indexRouter);
-app.use('/users', usersRouter);
-
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
-  next(createError(404));
+// Use connect method to connect to the server
+MongoClient.connect(url, function(err, client) {
+  assert.equal(null, err);
+  console.log("Connected successfully to server");
+	const db = client.db(dbName);
+	recordDeployment(db, function() {
+    client.close();
+  });
 });
 
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+const recordDeployment = function(db, callback) {
+  let d = new Date();
+  // Get the documents collection
+  const collection = db.collection(argv.e);
+   let doc = {
+    date: d,
+    serviceName: argv.name,
+    branch: argv.branch,
+    commit: argv.commit,
+    serviceJson: argv.serviceJson
+  }
 
-  // render the error page
-  res.status(err.status || 500);
-  res.render('error');
-});
+  collection.insertOne(doc, function (err, res) {
+    if (err) throw err;
+    console.log("inserted doc", res.ops[0]);
+  });
+}   
+    
+ /* 
+  collection.insertMany([
+    { date: new Date(Date.now()).toISOString() },
+    { serviceName: argv.name },
+    { branch: argv.branch },
+    { commit: argv.commit },
+    { serviceJson: argv.serviceJson }
+  ], function(err, result) {
+    callback(result);
+  });
 
-module.exports = app;
+  */
+//}
