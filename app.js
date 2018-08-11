@@ -44,6 +44,10 @@ var argv = require('yargs')
     deployment: {
       alias: 'd',
        boolean: true
+    },
+    filter: {
+      alias: 'f',
+      requiresArg: true
     }
   })
   .argv;
@@ -58,21 +62,40 @@ if (argv.d) {
       client.close();
     });
   });
-} else if (argv.g) {
+} else if (argv.g && argv.a) {
   MongoClient.connect(url, function(err, client) {
     assert.equal(null, err);
     console.log("Connected successfully to server");
 	  const db = client.db(dbName);
-	  readDeployments(db, function() {
+	  readAllDeployments(db, function() {
+      client.close();
+    });
+  });
+} else if (argv.g && !argv.a) {
+  MongoClient.connect(url, function(err, client) {
+    assert.equal(null, err);
+    console.log("Connected successfully to server");
+	  const db = client.db(dbName);
+	  readFilterDeployments(db, argv.f, function() {
       client.close();
     });
   });
 }
 
-const readDeployments = function(db, callback) {
 
+const readFilterDeployments = function(db, filter, callback) {
+  var collection = db.collection(argv.environment);
+  var exp = new RegExp('^(.*?)auth')
+  collection.find({"serviceName": exp}).toArray((err, docs) => {
+    if (err) throw err;
+    console.log(docs)
+    callback(docs);;
+  })
+
+}
+
+const readAllDeployments = function(db, callback) {
  const collection = db.collection(argv.e);
-
   collection.find({}).toArray(function(err, result) {
     if (err) throw err;
     console.log(result);
