@@ -3,12 +3,12 @@ const fs = require('fs')
 const MongoClient = require('mongodb').MongoClient;
 const assert = require('assert');
 var Binary = require('mongodb').Binary;
-var db = require('./db.js');
+
 const url = 'mongodb://localhost:27017';
 const dbName = 'deployments';
-    
+
 var argv = require('yargs')
-  .usage('Usage: $0 -e [str] -n [str]')
+  .usage('Usage: $0 -e [str] -n [str] -c [int] -b [str] -d for deployment, -g for get deployments')
   .help('help').alias('help', 'h')
   .options({
     environment: {
@@ -16,6 +16,12 @@ var argv = require('yargs')
       description: "<envrionment> environment name",
       requiresArg: true,
 //      required: true
+    },
+    image: {
+    alias: 'i',
+      description: "<service image> name of service",
+      requiresArg: true,
+      //required: true
     },
     name: {
       alias: 'n',
@@ -48,12 +54,17 @@ var argv = require('yargs')
     filter: {
       alias: 'f',
       requiresArg: true
+    },
+    get: {
+      alias: 'g',
+      requiresArg: true,
+      description: "pass a for get all deployments or f \"key value\" query"
     }
+
   })
   .argv;
 
-
-if (argv.d) {
+  if (argv.d) {
   MongoClient.connect(url, function(err, client) {
     assert.equal(null, err);
     console.log("Connected successfully to server");
@@ -62,36 +73,43 @@ if (argv.d) {
       client.close();
     });
   });
-} else if (argv.g && argv.a) {
-  MongoClient.connect(url, function(err, client) {
-    assert.equal(null, err);
-    console.log("Connected successfully to server");
-	  const db = client.db(dbName);
-	  readAllDeployments(db, function() {
-      client.close();
+  } else if (argv.g && argv.a) {
+    MongoClient.connect(url, function(err, client) {
+      assert.equal(null, err);
+      console.log("Connected successfully to server");
+	    const db = client.db(dbName);
+	    readAllDeployments(db, function() {
+        client.close();
+      });
     });
-  });
-} else if (argv.g && !argv.a) {
-  MongoClient.connect(url, function(err, client) {
-    assert.equal(null, err);
-    console.log("Connected successfully to server");
-	  const db = client.db(dbName);
-	  readFilterDeployments(db, argv.f, function() {
-      client.close();
+ } else if (argv.g && argv.f) {
+    MongoClient.connect(url, function(err, client) {
+      assert.equal(null, err);
+      console.log("Connected successfully to server");
+	    const db = client.db(dbName);
+	    readFilterDeployments(db, argv.filter, function() {
+        client.close();
+      });
     });
-  });
-}
+  }
 
-
-const readFilterDeployments = function(db, filter, callback) {
+const readFilterDeployments = function(db, filterParam, callback) {
   var collection = db.collection(argv.environment);
-  var exp = new RegExp('^(.*?)auth')
-  collection.find({"serviceName": exp}).toArray((err, docs) => {
+  //filter is in form "key value"
+  var sp = filterParam.split(" ");
+  let key = sp[0];
+  let value = sp[1];
+
+  var exp = new RegExp('^(.*?)' + value)
+  //let query = { key: exp }
+  var query = {};
+  query[key] = exp;
+ 
+  collection.find(query).toArray((err, docs) => {
     if (err) throw err;
     console.log(docs)
     callback(docs);;
   })
-
 }
 
 const readAllDeployments = function(db, callback) {
@@ -117,7 +135,8 @@ const recordDeployment = function(db, callback) {
     serviceName: argv.name,
     branch: argv.branch,
     commit: argv.commit,
-    serviceJson: insert_data
+    serviceJson: insert_data,
+    image: argv.image
   }
  
   collection.insertOne(doc, function (err, res) {
@@ -125,5 +144,4 @@ const recordDeployment = function(db, callback) {
     console.log("inserted doc");
     callback(res);
   });
-}   
-
+}
