@@ -15,6 +15,8 @@ const deploymentSchema = mongoose.Schema({
   date: { type: Date }
 });
 
+
+
 // Define model as an interface with the database
 const Deployment = mongoose.model('Deployment', deploymentSchema);
 
@@ -24,7 +26,6 @@ const addDeployment = (deployment) => {
   let environment = deployment.environment
   var fileDataJson = getFileContents(deployment.serviceJson)
   deployment.serviceJsonData = fileDataJson;
-
   connection.on('error', console.error.bind(console, 'connection error:'));
   connection.once('open', function () {
     connection.db.collection(environment, function(err, collection){
@@ -39,7 +40,6 @@ const getDeployment = (environment, key, value) => {
   var exp = new RegExp('^(.*?)auth')
   var query = {};
   query[key] = exp;
-
   connection.on('error', console.error.bind(console, 'connection error:'));
   connection.once('open', function () {
     connection.db.collection(environment, function(err, collection){
@@ -51,9 +51,24 @@ const getDeployment = (environment, key, value) => {
 connection.close();
 };
 
-//will generate all service.jsons ina  directory with the correct images...
+//will generate all service.jsons ina  directory with a script to run with swarm builder and .the correct images...
 const replay = (environment) => {
-
+  var replayArray = [];
+  connection.on('error', console.error.bind(console, 'connection error:'));
+  connection.once('open', function() {
+    connection.db.collection(environment, (err, collection) => {
+      collection.distinct('serviceName', (err, names) => {
+        if (err) throw err;
+        replayArray = names;
+        names.forEach((name) => {
+          replayArray.push(name);
+        });
+        //console.log(replayArray)
+//names is an array of all distinct service names...need to take each name and find its correcsponidng collection and get that data
+      });
+    });
+  });
+  connection.close();
 }
 
 const getFileContents = (path) => {
@@ -61,8 +76,6 @@ const getFileContents = (path) => {
   var jsonContent = JSON.parse(content);
   //console.log("file content: \n", jsonContent);
   return jsonContent;
-
-  
 }
 
 
