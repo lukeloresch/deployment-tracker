@@ -7,7 +7,6 @@ program
   .description('Deployment management system');
 program
   .command('addDeployment <environment> <serviceName> <branch> <commit> <image> <serviceJson file>')
-  //.alias('d')
   .description('Add a deployment')
   .action((environment, serviceName, branch, commit, image, serviceJson) => {
     let o = {
@@ -22,7 +21,6 @@ program
   });
 program
   .command('getDeployment <environment> <key> <value>')
-  //.alias('g')
   .description("Get Deployment(s)")
   .action((environment, key, value) => getDeployment(environment, key, value));
 
